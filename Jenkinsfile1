@@ -1,0 +1,64 @@
+
+pipeline {
+    agent any
+
+    environment {
+        DEPLOY_HOST = '172.31.35.234'
+        DEPLOY_USER = 'root'
+        DEPLOY_DIR = '/root/source/apache-tomcat-10.1.60/webapps'
+    }
+
+    stages {
+
+        stage('Clone-Repo') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Compile') {
+            steps {
+                sh 'mvn -B clean compile'
+            }
+        }
+
+        stage('Run Tests') {
+            steps {
+                sh 'mvn -B test'
+            }
+        }
+
+        stage('Package as WAR') {
+            steps {
+                sh 'mvn -B package -DskipTests'
+                sh 'ls -lh target/*.war'
+            }
+        }
+
+        stage('Deployment') {
+            steps {
+                sshagent(credentials: ['tomcat-ssh-key']) {
+                    sh '''
+                        scp target/flipkarts.war \
+                        ${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_DIR}/
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            junit allowEmptyResults: true,
+                  testResults: 'target/surefire-reports/*.xml'
+        }
+
+        success {
+            echo 'Application deployed successfully!'
+        }
+
+        failure {
+            echo 'Pipeline failed. Check Jenkins console output.'
+        }
+    }
+}
