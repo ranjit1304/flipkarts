@@ -1,0 +1,39 @@
+
+pipeline {
+    agent any
+
+    stages {
+        stage('Build') {
+            steps {
+                echo 'Building application...'
+                sh 'mkdir -p build'
+                sh 'echo Hello DevOps > build/output.txt'
+            }
+        }
+
+        stage('Test') {
+            steps {
+                echo 'Testing application...'
+                sh 'test -f build/output.txt'
+                sh 'grep -q "Hello DevOps" build/output.txt'
+            }
+        }
+
+        stage('Release') {
+            steps {
+                echo 'Preparing release...'
+                archiveArtifacts artifacts: 'build/output.txt'
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Pipeline completed successfully!'
+        }
+
+        failure {
+            echo 'Pipeline failed!'
+        }
+    }
+}
